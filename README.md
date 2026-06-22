@@ -1,6 +1,7 @@
 # 🌍 EcoVerse
+
 EcoVerse is a modern, interactive, and gamified web application designed to help users track, understand, and reduce their personal carbon footprints. By combining real-time tracking, social features, live environment data, and Google Gemini AI integration, EcoVerse empowers individuals to make smarter, greener choices every day.
----
+
 ## 🚀 Key Features
 *   **📊 Carbon Dashboard:** A central hub showing daily footprint metrics across key categories (Diet, Transport, and Energy) with visual progression tracking.
 *   **🥗 Footprint Calculators:**
@@ -13,7 +14,7 @@ EcoVerse is a modern, interactive, and gamified web application designed to help
 *   **🌐 Eco-Circle (Social):** Add friends, compare impact on global and friend leaderboards, and share your eco cards.
 *   **🌍 Live Data & Local Tips:** Integrates real-time weather and grid carbon intensity data to suggest smart actions.
 *   **🛡️ Admin Panel:** Manage user accounts, inquiries, guest tips, publish global announcements, toggle maintenance mode, and manage API keys safely.
----
+--
 ## 🛠️ Tech Stack
 *   **Frontend:** HTML5, CSS3 (Vanilla), JavaScript
 *   **Backend & Services:** Firebase Suite
