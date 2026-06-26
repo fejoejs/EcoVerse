@@ -112,7 +112,7 @@ async function sendMessage(userText) {
   const typingEl = appendMsg("bot", "", true);
 
   try {
-    const key = await window._eco.getApiKey("chatbot", "YOUR_API_KEY");
+    const key = await window._eco.getApiKey("chatbot");
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
 
     const payload = {

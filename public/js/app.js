@@ -26,6 +26,7 @@ function showPage(id) {
 
   // close panels
   document.getElementById("mobile-nav")?.classList.remove("open");
+  document.getElementById("mobile-nav-overlay")?.classList.remove("open");
   document.getElementById("ham-btn")?.classList.remove("open");
   document.getElementById("profile-dropdown")?.classList.remove("open");
   document.getElementById("notif-panel")?.classList.add("hidden");
@@ -131,14 +132,19 @@ function buildMobileNav() {
     a.addEventListener("click", e => { e.preventDefault(); showPage(page); });
     nav.insertBefore(a, nav.querySelector(".mn-close"));
   });
+  const overlay = document.getElementById("mobile-nav-overlay");
   document.getElementById("ham-btn")?.addEventListener("click", () => {
     nav.classList.toggle("open");
-    document.getElementById("ham-btn").classList.toggle("open");
+    overlay?.classList.toggle("open");
+    document.getElementById("ham-btn")?.classList.toggle("open");
   });
-  document.getElementById("mn-close-btn")?.addEventListener("click", () => {
+  const closeMenu = () => {
     nav.classList.remove("open");
+    overlay?.classList.remove("open");
     document.getElementById("ham-btn")?.classList.remove("open");
-  });
+  };
+  document.getElementById("mn-close-btn")?.addEventListener("click", closeMenu);
+  overlay?.addEventListener("click", closeMenu);
 }
 
 // ── Bind nav links ────────────────────────
@@ -232,7 +238,7 @@ waitEco(() => {
   document.addEventListener("contextmenu", e => e.preventDefault());
 
   // Disable developer tool shortcuts (F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U)
-  document.addEventListener("keydown", e => {
+    document.addEventListener("keydown", e => {
     if (e.keyCode === 123) {
       e.preventDefault();
     }

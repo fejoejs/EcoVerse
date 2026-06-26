@@ -52,8 +52,18 @@ function initCharts() {
 async function updateDashboard() {
   const user = window._eco.auth?.currentUser; if (!user) return;
   const ds       = document.getElementById("date-select")?.value || new Date().toISOString().split("T")[0];
-  const dayData  = await getDayData(user.uid, ds);
-  const weekData = await getWeekData(user.uid);
+  
+  const snap     = await get(ref(db, `users/${user.uid}/data`));
+  const allData  = snap.exists() ? snap.val() : {};
+  const dayData  = allData[ds] || {};
+  
+  const weekData = {};
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(); d.setDate(d.getDate() - i);
+    const dsTemp = d.toISOString().split("T")[0];
+    weekData[dsTemp] = allData[dsTemp] || {};
+  }
+  
   const dCO2 = sumCat(dayData,"diet"), tCO2 = sumCat(dayData,"transport"), eCO2 = sumCat(dayData,"energy");
   const total = dCO2 + tCO2 + eCO2;
 
@@ -133,26 +143,41 @@ async function updateSummary() {
   setT("summary-greeting-text", `${greet}, ${name}!`);
   setT("summary-name-h", (user.displayName || name) + " 🌿");
 
-  const snap = await get(ref(window._eco.db, `users/${user.uid}/data`));
-  let totalSaved = 0, goals = 0;
-  if (snap.exists()) {
-    Object.values(snap.val()).forEach(dd => {
-      const dt = sumCat(dd,"diet") + sumCat(dd,"transport") + sumCat(dd,"energy");
-      if (dt > 0) { totalSaved += dt * .25; if (dt < 5) goals++; }
+  try {
+    const [snap, pSnap] = await Promise.all([
+      get(ref(window._eco.db, `users/${user.uid}/data`)),
+      get(ref(window._eco.db, `users/${user.uid}/profile`))
+    ]);
+
+    let totalSaved = 0, goals = 0;
+    const allData = snap.exists() ? snap.val() : {};
+
+    Object.values(allData).forEach(dd => {
+      const dt = sumCat(dd, "diet") + sumCat(dd, "transport") + sumCat(dd, "energy");
+      if (dt > 0) { totalSaved += dt * 0.25; if (dt < 5) goals++; }
     });
+
+    const wd = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const ds = d.toISOString().split("T")[0];
+      wd[ds] = allData[ds] || {};
+    }
+
+    let streak = 0;
+    for (const d of Object.keys(wd).sort().reverse()) {
+      const dt = sumCat(wd[d], "diet") + sumCat(wd[d], "transport") + sumCat(wd[d], "energy");
+      if (dt > 0) streak++; else break;
+    }
+
+    const lvl = pSnap.exists() ? (pSnap.val().level || 1) : 1;
+    setT("summary-total",  totalSaved.toFixed(1));
+    setT("summary-streak", streak);
+    setT("summary-goals",  goals);
+    setT("summary-level",  lvl);
+  } catch (err) {
+    console.warn("[Dashboard] updateSummary failed:", err);
   }
-  const wd = await getWeekData(user.uid);
-  let streak = 0;
-  for (const d of Object.keys(wd).sort().reverse()) {
-    const dt = sumCat(wd[d],"diet") + sumCat(wd[d],"transport") + sumCat(wd[d],"energy");
-    if (dt > 0) streak++; else break;
-  }
-  const pSnap = await get(ref(window._eco.db, `users/${user.uid}/profile`));
-  const lvl   = pSnap.exists() ? (pSnap.val().level || 1) : 1;
-  setT("summary-total",  totalSaved.toFixed(1));
-  setT("summary-streak", streak);
-  setT("summary-goals",  goals);
-  setT("summary-level",  lvl);
 }
 
 // Real-time global stats on landing page
@@ -276,17 +301,32 @@ async function openShareModal() {
   }
 
   try {
+    const safeGetLeaderboard = get(ref(db, "leaderboard")).catch(err => {
+      console.warn("Leaderboard get failed:", err);
+      return null;
+    });
+
+    const [snap, pSnap, lbSnap] = await Promise.all([
+      get(ref(db, `users/${user.uid}/data`)),
+      get(ref(db, `users/${user.uid}/profile`)),
+      safeGetLeaderboard
+    ]);
+
     // 1. Calculate total savings
-    const snap = await get(ref(db, `users/${user.uid}/data`));
     let totalSaved = 0;
-    if (snap.exists()) {
-      Object.values(snap.val()).forEach(dd => {
-        totalSaved += (sumCat(dd, "diet") + sumCat(dd, "transport") + sumCat(dd, "energy")) * 0.25;
-      });
-    }
+    const allData = snap.exists() ? snap.val() : {};
+    Object.values(allData).forEach(dd => {
+      totalSaved += (sumCat(dd, "diet") + sumCat(dd, "transport") + sumCat(dd, "energy")) * 0.25;
+    });
 
     // 2. Calculate streak
-    const wd = await getWeekData(user.uid);
+    const wd = {};
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const dsTemp = d.toISOString().split("T")[0];
+      wd[dsTemp] = allData[dsTemp] || {};
+    }
+
     let streak = 0;
     for (const d of Object.keys(wd).sort().reverse()) {
       const dt = sumCat(wd[d], "diet") + sumCat(wd[d], "transport") + sumCat(wd[d], "energy");
@@ -294,24 +334,18 @@ async function openShareModal() {
     }
 
     // 3. Get profile level
-    const pSnap = await get(ref(db, `users/${user.uid}/profile`));
-    const prof = pSnap.exists() ? pSnap.val() : {};
+    const prof = pSnap && pSnap.exists() ? pSnap.val() : {};
     const level = prof.level || 1;
 
-    // 4. Calculate rank (wrapped in try-catch to prevent leaderboard permission rule failures from crashing the feature)
+    // 4. Calculate rank
     let rankText = "#--";
-    try {
-      const lbSnap = await get(ref(db, "leaderboard"));
-      if (lbSnap.exists()) {
-        const entries = Object.entries(lbSnap.val()).map(([uid, e]) => ({ uid, co2: e.weeklyCO2 || 0 }));
-        entries.sort((a, b) => a.co2 - b.co2); // best is lowest footprint
-        const idx = entries.findIndex(e => e.uid === user.uid);
-        if (idx !== -1) {
-          rankText = `#${idx + 1}`;
-        }
+    if (lbSnap && lbSnap.exists()) {
+      const entries = Object.entries(lbSnap.val()).map(([uid, e]) => ({ uid, co2: e.weeklyCO2 || 0 }));
+      entries.sort((a, b) => a.co2 - b.co2);
+      const idx = entries.findIndex(e => e.uid === user.uid);
+      if (idx !== -1) {
+        rankText = `#${idx + 1}`;
       }
-    } catch (e) {
-      console.warn("Failed to fetch rank for share card:", e);
     }
 
     // Update modal DOM
@@ -468,7 +502,7 @@ You MUST respond with a raw JSON object and nothing else. No markdown formatting
   "explanation": "A concise explanation of why that answer is correct (1-2 sentences)."
 }`;
 
-  const key = await window._eco.getApiKey("gemini", "YOUR_API_KEY");
+  const key = await window._eco.getApiKey("gemini");
   const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
 
   const res = await fetch(geminiUrl, {
@@ -570,26 +604,30 @@ async function handleQuizCorrect(quizData) {
   const todayStr = quizData.date;
   
   try {
-    if (window._eco.addXP) {
-      await window._eco.addXP(user.uid, db, 10);
-    } else {
-      const profRef = ref(db, `users/${user.uid}/profile`);
-      const snap = await get(profRef);
-      if (snap.exists()) {
-        const prof = snap.val();
-        const oldXP = prof.xp || 0;
-        const newXP = oldXP + 10;
-        const newLv = getLvl(newXP).level;
-        await update(profRef, { xp: newXP, level: newLv });
-      }
-    }
-    
     const profRef = ref(db, `users/${user.uid}/profile`);
     const snap = await get(profRef);
-    const prof = snap.exists() ? snap.val() : {};
-    const oldEcoPoints = prof.ecoPoints || 0;
-    const newEcoPoints = oldEcoPoints + 5;
-    await update(profRef, { ecoPoints: newEcoPoints, lastQuizCompleted: todayStr });
+    if (snap.exists()) {
+      const prof = snap.val();
+      const oldXP = prof.xp || 0;
+      const newXP = oldXP + 10;
+      const oldLv = getLvl(oldXP).level;
+      const newLv = getLvl(newXP).level;
+      const oldEcoPoints = prof.ecoPoints || 0;
+      const newEcoPoints = oldEcoPoints + 5;
+      
+      await update(profRef, {
+        xp: newXP,
+        level: newLv,
+        ecoPoints: newEcoPoints,
+        lastQuizCompleted: todayStr
+      });
+      
+      if (newLv > oldLv) {
+        window._eco.showToast(`🎉 Level Up! You are now ${getLvl(newXP).title} (Level ${newLv})!`);
+        const badge = document.getElementById("user-level-badge");
+        if (badge) badge.textContent = `Lv.${newLv}`;
+      }
+    }
     
     if (window._eco.publishLeaderboardEntry) {
       window._eco.publishLeaderboardEntry();
@@ -656,7 +694,7 @@ Schema:
   "savings": "Estimated CO2 savings (e.g., '1.3 kg CO₂ saved')"
 }`;
 
-    const key = await window._eco.getApiKey("gemini", "YOUR_API_KEY");
+    const key = await window._eco.getApiKey("gemini");
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
 
     const res = await fetch(geminiUrl, {

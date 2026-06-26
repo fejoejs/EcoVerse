@@ -39,8 +39,10 @@ async function saveEntry(uid, category, data) {
   const db  = window._eco.db;
   const ds  = getDateStr();
   const entry = { ...data, timestamp: new Date().toISOString(), date: ds };
-  await set(push(ref(db, `users/${uid}/data/${ds}/${category}`)), entry);
-  try { await update(ref(db, "globalStats"), { totalCO2Tracked: increment(data.co2Impact || 0) }); } catch (_) {}
+  await Promise.all([
+    set(push(ref(db, `users/${uid}/data/${ds}/${category}`)), entry),
+    update(ref(db, "globalStats"), { totalCO2Tracked: increment(data.co2Impact || 0) }).catch(() => {})
+  ]);
 }
 export async function getDayData(uid, ds) {
   const snap = await get(ref(window._eco.db, `users/${uid}/data/${ds}`));

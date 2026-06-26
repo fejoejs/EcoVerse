@@ -565,7 +565,7 @@ Give ONE specific, actionable sustainability recommendation tailored to whicheve
 {"title": "short action title (max 6 words)", "body": "1-2 sentence specific actionable advice", "save": "estimated saving like ~0.5 kg CO2/day"}`;
 
   try {
-    const key = await window._eco.getApiKey("gemini", "YOUR_API_KEY");
+    const key = await window._eco.getApiKey("gemini");
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${REC_GEMINI_MODEL}:generateContent?key=${key}`;
 
     const res = await fetch(geminiUrl, {

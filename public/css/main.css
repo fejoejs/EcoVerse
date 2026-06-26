@@ -89,18 +89,24 @@ body{font-family:var(--font-b);color:var(--ink);line-height:1.65;min-height:100v
 @media(max-width:768px){
   #main-header{min-height:84px;display:flex;align-items:center}
   .header-inner{padding:0;width:100%}
-  .profile-btn{padding:3px;border-radius:50%;background:rgba(61,153,112,.08);border:1px solid rgba(61,153,112,.22)}
+  .profile-wrap{position:static}
+  .profile-btn{padding:3px;border-radius:50%;background:rgba(6,10,7,.08);border:1px solid rgba(61,153,112,.22)}
   .profile-btn>span:not(.level-badge),.profile-btn .level-badge,.profile-btn .fa-chevron-down{display:none!important}
   .user-avatar{width:34px;height:34px}
   #signupBtn{display:none!important}
-  #ham-btn{background:rgba(61,153,112,.08);border-color:rgba(61,153,112,.22);padding:9px 11px}
+  #ham-btn{background:rgba(6,153,112,.08);border-color:rgba(61,153,112,.22);padding:9px 11px}
   #ham-btn span{background:var(--mint)}
   .page{min-height:calc(100vh - 84px)!important}
+  .profile-dropdown{right:16px;top:80px}
+  .mn-close{display:none!important}
+  .btn{white-space:normal!important;text-align:center;line-height:1.4}
 }
 
 /* ── Mobile nav ───────────────────────────── */
-#mobile-nav{position:fixed;inset:0;z-index:350;background:rgba(6,10,7,.97);backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;padding:100px 36px 40px;overflow-y:auto;opacity:0;pointer-events:none;transition:opacity .3s ease}
-#mobile-nav.open{opacity:1;pointer-events:auto}
+#mobile-nav{position:fixed;top:0;bottom:0;right:0;width:280px;max-width:80%;z-index:350;background:rgba(6,10,7,.97);backdrop-filter:blur(24px);display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:4px;padding:100px 24px 40px;overflow-y:auto;transform:translateX(100%);transition:transform 0.3s cubic-bezier(0.4,0,0.2,1);box-shadow:-10px 0 30px rgba(0,0,0,0.5)}
+#mobile-nav.open{transform:translateX(0)}
+.mobile-nav-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:340;opacity:0;pointer-events:none;transition:opacity 0.3s ease}
+.mobile-nav-overlay.open{opacity:1;pointer-events:auto}
 .mn-link{color:var(--fog);text-decoration:none;font-size:1.05rem;font-weight:600;padding:12px 20px;border-radius:12px;width:100%;max-width:260px;text-align:left;transition:var(--tr);border:1px solid transparent;display:block}
 .mn-link:hover,.mn-link.active{background:rgba(61,153,112,.15);color:var(--white);border-color:rgba(61,153,112,.3)}
 .mn-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:var(--fog);width:36px;height:36px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:1rem}
@@ -226,7 +232,7 @@ select option{background:#0a1a0f!important;color:#ffffff!important}
 
 /* For Mobile menu link, align to the far right */
 .mn-link[data-page="admin"] {
-  display: flex !important;
+  display: flex;
   align-items: center !important;
   justify-content: space-between !important;
 }

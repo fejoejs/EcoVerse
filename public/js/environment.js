@@ -87,7 +87,7 @@ async function detectCountry(lat, lon) {
 }
 
 async function fetchWeather(lat, lon) {
-  const key = await window._eco.getApiKey("openweather", "YOUR_API_KEY");
+  const key = await window._eco.getApiKey("openweather");
   if (key) {
     try {
       const r = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${key}&units=metric`);

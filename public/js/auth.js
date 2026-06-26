@@ -93,28 +93,36 @@ waitEco(() => {
     const snap    = await get(profRef);
     const name    = user.displayName || user.email.split("@")[0];
     if (!snap.exists()) {
-      await set(profRef, {
+      const profile = {
         name, email: user.email, photoURL: user.photoURL || "",
         country, joinedAt: Date.now(), lastLogin: Date.now(),
         xp: 0, level: 1, streak: 0, ecoPoints: 0,
         notifEmail: true, notifApp: true
-      });
-      try { await update(ref(db, "globalStats"), { totalUsers: increment(1) }); }
-      catch (e) { console.error("Failed to increment totalUsers — check Firebase RTDB rules:", e); }
-      await writeEmailIndex(user.email, user.uid);
+      };
+      await Promise.all([
+        set(profRef, profile),
+        writeEmailIndex(user.email, user.uid),
+        update(ref(db, "globalStats"), { totalUsers: increment(1) }).catch(e =>
+          console.error("Failed to increment totalUsers — check Firebase RTDB rules:", e)
+        )
+      ]);
       sendEmail(name, user.email,
         `Welcome to EcoVerse, ${name}! 🌍\n\nStart tracking your carbon footprint today and join thousands of eco-warriors making a real difference.\n\nVisit your dashboard to get started!\n\n— The EcoVerse Team`);
-      return true; // new user
+      return { isNew: true, profile }; // new user
     } else {
-      const lastLogin = snap.val().lastLogin || 0;
-      const streak    = snap.val().streak    || 0;
-      await update(profRef, { lastLogin: Date.now() });
-      await writeEmailIndex(user.email, user.uid); // backfill for pre-existing accounts
-      if (Date.now() - lastLogin > 20 * 3600 * 1000 && snap.val().notifEmail !== false) {
+      const profile = snap.val();
+      const lastLogin = profile.lastLogin || 0;
+      const streak    = profile.streak    || 0;
+      profile.lastLogin = Date.now();
+      await Promise.all([
+        update(profRef, { lastLogin: profile.lastLogin }),
+        writeEmailIndex(user.email, user.uid)
+      ]);
+      if (Date.now() - lastLogin > 20 * 3600 * 1000 && profile.notifEmail !== false) {
         sendEmail(name, user.email,
           `Hey ${name}! 🌿\n\nDon't forget to log today's carbon footprint. You're on a ${streak}-day streak — keep it going!\n\n— EcoVerse`);
       }
-      return false;
+      return { isNew: false, profile };
     }
   }
 
@@ -137,19 +145,16 @@ waitEco(() => {
       let prof = {};
       let isAdminTrue = false;
       try {
-        isNew = await setupUser(user);
-        const pSnap = await get(ref(db, `users/${user.uid}/profile`));
-        if (pSnap.exists()) prof = pSnap.val();
-      } catch (err) {
-        console.warn("[Auth] Failed to load profile data:", err);
-      }
-
-      try {
-        const adminSnap = await get(ref(db, `users/${user.uid}/isAdmin`));
+        const [setupResult, adminSnap] = await Promise.all([
+          setupUser(user),
+          get(ref(db, `users/${user.uid}/isAdmin`))
+        ]);
+        isNew = setupResult.isNew;
+        prof = setupResult.profile;
         isAdminTrue = adminSnap.exists() && (adminSnap.val() === true || adminSnap.val() === "true");
-        console.log(`[Auth Debug] User: ${user.email}, UID: ${user.uid}, isAdmin node exists: ${adminSnap.exists()}, val:`, adminSnap.val());
+        console.log(`[Auth Debug] User: ${user.email}, UID: ${user.uid}, isAdmin: ${isAdminTrue}`);
       } catch (err) {
-        console.warn("[Auth] Failed to load admin status:", err);
+        console.warn("[Auth] Parallel user initialization failed:", err);
       }
 
       window._eco.isAdmin = isAdminTrue;
@@ -213,42 +218,6 @@ waitEco(() => {
         if (window._eco.setupAdminNotificationListeners) {
           window._eco.setupAdminNotificationListeners();
         }
-        try {
-          const keysSnap = await get(ref(db, "apiKeys"));
-          let needsUpdate = false;
-          let currentKeys = {};
-          if (keysSnap.exists() && keysSnap.val()) {
-            currentKeys = keysSnap.val();
-          } else {
-            needsUpdate = true;
-          }
-
-          const defaultGemini = "YOUR_API_KEY";
-          const defaultChatbot = "YOUR_API_KEY";
-          const defaultWeather = "YOUR_API_KEY";
-          
-          const oldBrokenGemini = "YOUR_API_KEY";
-
-          if (!currentKeys.gemini || currentKeys.gemini === oldBrokenGemini) {
-            currentKeys.gemini = defaultGemini;
-            needsUpdate = true;
-          }
-          if (!currentKeys.chatbot) {
-            currentKeys.chatbot = defaultChatbot;
-            needsUpdate = true;
-          }
-          if (!currentKeys.openweather) {
-            currentKeys.openweather = defaultWeather;
-            needsUpdate = true;
-          }
-
-          if (needsUpdate) {
-            await update(ref(db, "apiKeys"), currentKeys);
-            console.log("[Auth] Successfully seeded/healed API keys in database.");
-          }
-        } catch (e) {
-          console.warn("[Auth] Failed to seed API keys in database:", e);
-        }
       } else {
         if (window._eco.clearAdminNotificationListeners) {
           window._eco.clearAdminNotificationListeners();
@@ -302,7 +271,7 @@ waitEco(() => {
 
     if (isRealAdmin) {
       if (navAdmin) navAdmin.style.display = "inline-flex";
-      if (mnAdmin) mnAdmin.style.display = "block";
+      if (mnAdmin) mnAdmin.style.display = "flex";
     } else {
       if (navAdmin) navAdmin.style.display = "none";
       if (mnAdmin) mnAdmin.style.display = "none";
