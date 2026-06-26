@@ -4,14 +4,14 @@ import { getAuth }       from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getDatabase, ref, get }   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const app = initializeApp({
-  apiKey: "AIzaSyD018J9V6-Q-eLT-AO1QKOIS0Zp3AqG75g",
-  authDomain: "ecoverse-2026.firebaseapp.com",
-  databaseURL: "https://ecoverse-2026-default-rtdb.firebaseio.com",
-  projectId: "ecoverse-2026",
-  storageBucket: "ecoverse-2026.firebasestorage.app",
-  messagingSenderId: "824254658379",
-  appId: "1:824254658379:web:80f751b5aafad2d8e05ace",
-  measurementId: "G-X46VD5M7E6"
+  apiKey: "API-key",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: "",
+  measurementId: ""
 });
 
 window._eco        = window._eco || {};
