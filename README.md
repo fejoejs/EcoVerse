@@ -28,7 +28,6 @@ EcoVerse is a modern, interactive, and gamified web application designed to help
 
 ## 🔐 API Key Management
 EcoVerse is configured to retrieve API keys dynamically from the Firebase Realtime Database to prevent exposing sensitive credentials in client-side repositories. 
-Ensure the following path is configured in your database:
 
 # 🌍 EcoVerse
 **Live Demo:** [https://ecoverse-2026.web.app]
